@@ -4,6 +4,7 @@ import com.aishwarya.userservice.dtos.LoginRequestDto;
 import com.aishwarya.userservice.dtos.SignUpRequestDto;
 import com.aishwarya.userservice.dtos.TokenDto;
 import com.aishwarya.userservice.dtos.UserDto;
+import com.aishwarya.userservice.exceptions.InvalidTokenException;
 import com.aishwarya.userservice.exceptions.PasswordMismatchException;
 import com.aishwarya.userservice.models.Token;
 import com.aishwarya.userservice.models.User;
@@ -35,7 +36,8 @@ public class UserController {
     }
 
     @GetMapping("/validate/{tokenValue}")
-    public UserDto validateToken(@PathVariable("tokenValriable") String tokenValue) {
-        return null;
+    public UserDto validateToken(@PathVariable("tokenValue") String tokenValue) throws InvalidTokenException {
+        User user = userService.validateToken(tokenValue);
+        return UserDto.from(user);
     }
 }

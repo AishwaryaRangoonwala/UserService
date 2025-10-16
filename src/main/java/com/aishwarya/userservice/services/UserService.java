@@ -1,5 +1,6 @@
 package com.aishwarya.userservice.services;
 
+import com.aishwarya.userservice.exceptions.InvalidTokenException;
 import com.aishwarya.userservice.exceptions.PasswordMismatchException;
 import com.aishwarya.userservice.models.Token;
 import com.aishwarya.userservice.models.User;
@@ -9,5 +10,5 @@ public interface UserService {
 
     Token login(String email, String password) throws PasswordMismatchException;
 
-    User validateToken(String tokenValue);
+    User validateToken(String tokenValue) throws InvalidTokenException;
 }
