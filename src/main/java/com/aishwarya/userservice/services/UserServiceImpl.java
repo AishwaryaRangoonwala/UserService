@@ -8,10 +8,12 @@ import com.aishwarya.userservice.models.User;
 import com.aishwarya.userservice.repositories.RoleRepository;
 import com.aishwarya.userservice.repositories.TokenRepository;
 import com.aishwarya.userservice.repositories.UserRepository;
+import io.jsonwebtoken.Jwts;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Optional;
@@ -52,7 +54,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public Token login(String email, String password) throws PasswordMismatchException {
+    public String login(String email, String password) throws PasswordMismatchException {
         Optional<User> optionalUser = userRepository.findByEmail(email);
         if (optionalUser.isEmpty()) {
             // redirect the user to the signup page
@@ -65,13 +67,25 @@ public class UserServiceImpl implements UserService {
         }
         // Login successful
         // Generate the token
-        Token token = new Token();
-        token.setUser(user);
-        token.setTokenValue(RandomStringUtils.randomAlphanumeric(128));
-        Calendar calendar = Calendar.getInstance();
-        calendar.add(Calendar.DAY_OF_MONTH, 30);
-        token.setExpiryDate(calendar.getTime());
-        return tokenRepository.save(token);
+//        Token token = new Token();
+//        token.setUser(user);
+//        token.setTokenValue(RandomStringUtils.randomAlphanumeric(128));
+//        Calendar calendar = Calendar.getInstance();
+//        calendar.add(Calendar.DAY_OF_MONTH, 30);
+//        token.setExpiryDate(calendar.getTime());
+        // Generate a JWT token using JJWT
+        String userData = "{\n" +
+                "  \"email\": \"rangoonwalaaishwarya@gmail.com\",\n" +
+                "  \"roles\": [\n" +
+                "    \"instructor\",\n" +
+                "    \"ta\"\n" +
+                "  ],\n" +
+                "  \"expiryDate\": \"22ndSept2026\"\n" +
+                "}";
+        // TODO: Try to generate header and signature
+        byte[] payload = userData.getBytes(StandardCharsets.UTF_8);
+        String tokenValue = Jwts.builder().content(payload).compact();
+        return tokenValue;
     }
 
     @Override
