@@ -8,15 +8,17 @@ import com.aishwarya.userservice.models.User;
 import com.aishwarya.userservice.repositories.RoleRepository;
 import com.aishwarya.userservice.repositories.TokenRepository;
 import com.aishwarya.userservice.repositories.UserRepository;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtParser;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.MacAlgorithm;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 public class UserServiceImpl implements UserService {
@@ -25,15 +27,18 @@ public class UserServiceImpl implements UserService {
     private BCryptPasswordEncoder bCryptPasswordEncoder;
     private TokenRepository tokenRepository;
     private RoleRepository roleRepository;
+    private SecretKey secretKey;
 
     public UserServiceImpl(UserRepository userRepository,
                            BCryptPasswordEncoder bCryptPasswordEncoder,
                            TokenRepository tokenRepository,
-                           RoleRepository roleRepository) {
+                           RoleRepository roleRepository,
+                           SecretKey secretKey) {
         this.userRepository = userRepository;
         this.bCryptPasswordEncoder = bCryptPasswordEncoder;
         this.tokenRepository = tokenRepository;
         this.roleRepository = roleRepository;
+        this.secretKey = secretKey;
     }
 
     @Override
@@ -70,10 +75,12 @@ public class UserServiceImpl implements UserService {
 //        Token token = new Token();
 //        token.setUser(user);
 //        token.setTokenValue(RandomStringUtils.randomAlphanumeric(128));
-//        Calendar calendar = Calendar.getInstance();
-//        calendar.add(Calendar.DAY_OF_MONTH, 30);
-//        token.setExpiryDate(calendar.getTime());
+        Calendar calendar = Calendar.getInstance();
+        calendar.add(Calendar.DAY_OF_MONTH, 30);
+        Date expiryDate = calendar.getTime();
         // Generate a JWT token using JJWT
+        // Let's not harcode the payload, instead create the payload
+        // with the user details
         String userData = "{\n" +
                 "  \"email\": \"rangoonwalaaishwarya@gmail.com\",\n" +
                 "  \"roles\": [\n" +
@@ -83,20 +90,52 @@ public class UserServiceImpl implements UserService {
                 "  \"expiryDate\": \"22ndSept2026\"\n" +
                 "}";
         // TODO: Try to generate header and signature
-        byte[] payload = userData.getBytes(StandardCharsets.UTF_8);
-        String tokenValue = Jwts.builder().content(payload).compact();
-        return tokenValue;
+        // Claims == Payload
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("userId", user.getId());
+        claims.put("email", user.getEmail());
+        claims.put("exp", expiryDate);
+        // byte[] payload = userData.getBytes(StandardCharsets.UTF_8);
+        // String tokenValue = Jwts.builder().content(payload).compact();
+        String jwtToken = Jwts.builder().claims(claims).signWith(secretKey).compact();
+        return jwtToken;
     }
 
     @Override
     public User validateToken(String tokenValue) throws InvalidTokenException {
-        Optional<Token> tokenOptional =
-                tokenRepository.findByTokenValueAndExpiryDateAfter(tokenValue, new Date());
-        if (tokenOptional.isEmpty()) {
-            // token is invalid or either expired
-            throw new InvalidTokenException("Invalid token, either expired or token has expired.");
+//        Optional<Token> tokenOptional =
+//                tokenRepository.findByTokenValueAndExpiryDateAfter(tokenValue, new Date());
+//        if (tokenOptional.isEmpty()) {
+//            // token is invalid or either expired
+//            throw new InvalidTokenException("Invalid token, either expired or token has expired.");
+//        }
+
+        // Token is valid
+        /*
+        1. Create a parse
+        2. Get the claims and verify the token
+        3.
+         */
+        JwtParser jwtParser = Jwts.parser().verifyWith(secretKey).build();
+        Claims claims = jwtParser.parseSignedClaims(tokenValue).getPayload();
+        // Date expiryDate = (Date) claims.get("exp");
+        // Date currentDate = new Date();
+//        if (expiryDate.after(currentDate)) {
+//            Long userId = (Long) claims.get("userId");
+//            Optional<User> optionalUser = userRepository.findById(userId);
+//            return optionalUser.get();
+//        }
+        // Mutiplied by 1000 to get in milliseconds
+        Long expiryTime = (Long) claims.get("exp") * 1000L;
+        Long currentTime = System.currentTimeMillis();
+
+        if (expiryTime > currentTime) {
+            Integer userId =  (Integer) claims.get("userId");
+            Optional<User> optionalUser = userRepository.findById(Long.valueOf(userId));
+            return optionalUser.get();
         }
         // Token is valid
-        return tokenOptional.get().getUser();
+
+        return null;
     }
 }
